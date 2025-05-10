@@ -175,8 +175,8 @@ bad_group = MarkerCluster(name="🔴 Vermijden").add_to(m)
 exp_group = MarkerCluster(name="🟠 Experimenteel").add_to(m)
 
 folium.Marker(user_loc,
-              tooltip="Dit ben jij",
-              icon=folium.DivIcon(html="<div style='font-size:34px;'>🧘</div>")
+              tooltip="This is you!",
+              icon=folium.DivIcon(html="<div style='font-size:75px;'>🧘</div>")
               ).add_to(m)
 
 if show_people:
