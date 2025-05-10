@@ -194,7 +194,3 @@ with st.form("scream_form"):
         except Exception as e:
             st.error(f"Er ging iets mis bij het opslaan: {e}")
 
-if pd.io.common.file_exists("suggested_zones.csv"):
-    st.markdown("### 📄 Ingestuurde scream zones")
-    suggesties = pd.read_csv("suggested_zones.csv")
-    st.dataframe(suggesties)
