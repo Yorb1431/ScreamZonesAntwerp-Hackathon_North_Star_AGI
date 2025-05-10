@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import folium
+from folium.plugins import HeatMap
 from geopy.distance import geodesic
 from datasets import load_dataset
 import ast
@@ -63,7 +64,6 @@ def load_and_classify():
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
-# 1. Automatisch gebruikerlocatie ophalen
 location = get_geolocation()
 
 if location is None:
@@ -76,26 +76,24 @@ user_loc = (lat, lon)
 
 st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
 
-# 2. Laad dataset & classificeer scream zones
+# Dataset laden en klassificeren
 df = load_and_classify()
-
-# 3. Bereken afstand tot gebruiker
 df['afstand_m'] = df.apply(lambda row: geodesic(
     user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
-# 4. Voeg knop toe voor filtering
-st.subheader("🔎 Zoek scream zones")
-
+# 🔘 Filters
+st.subheader("🔍 Filteropties")
 if 'filter_active' not in st.session_state:
     st.session_state.filter_active = False
 
-if st.button("🧭 Waar kan ik NU schreeuwen?"):
-    st.session_state.filter_active = True
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🧭 Waar kan ik NU schreeuwen?"):
+        st.session_state.filter_active = True
+with col2:
+    if st.button("🔄 Toon alle scream zones"):
+        st.session_state.filter_active = False
 
-if st.button("🔄 Toon alle scream zones"):
-    st.session_state.filter_active = False
-
-# 5. Filter dataset op basis van selectie
 if st.session_state.filter_active:
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
     st.subheader("📍 Scream zones binnen 500 meter")
@@ -106,7 +104,7 @@ else:
     filtered_df = df.sort_values('afstand_m').head(5)
     st.subheader("📍 Dichtstbijzijnde scream zones")
 
-# 6. Teken kaart
+# 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
 folium.Marker(location=user_loc, popup="📍 Jouw locatie",
               icon=folium.Icon(color="blue")).add_to(m)
@@ -118,4 +116,11 @@ for _, row in filtered_df.iterrows():
         icon=folium.Icon(color=kleur(row['label']), icon='volume-up')
     ).add_to(m)
 
+# 🔥 Heatmap toevoegen
+heat_data = [[row['lat'], row['lon']] for _, row in df.iterrows()]
+HeatMap(heat_data, radius=12, blur=15, min_opacity=0.3).add_to(m)
+
+st.subheader("🗺️ Kaartweergave")
 st_folium(m, width=700, height=500)
+
+st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
