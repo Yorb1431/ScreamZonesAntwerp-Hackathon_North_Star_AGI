@@ -69,16 +69,21 @@ def load_and_classify():
     df['label'] = df['tags_parsed'].apply(classify_tags)
     return df[df['label'].str.startswith("✅")].copy()
 
-# ✅ LOCATIE ÉÉN KEER OPHALEN
+# ✅ LOCATIE ÉÉN KEER OPHALEN (alleen handmatig ophalen bij knopdruk)
 if 'user_loc' not in st.session_state:
+    st.session_state.user_loc = None
+
+if st.button("📍 Haal mijn locatie op") or st.session_state.user_loc is None:
     location = get_geolocation()
-    if location is None:
-        st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
-        st.stop()
-    st.session_state.user_loc = (
-        location['coords']['latitude'],
-        location['coords']['longitude']
-    )
+    if location is not None:
+        st.session_state.user_loc = (
+            location['coords']['latitude'],
+            location['coords']['longitude']
+        )
+
+if not st.session_state.user_loc:
+    st.warning("⏳ Wacht op locatie of klik op de knop hierboven.")
+    st.stop()
 
 user_loc = st.session_state.user_loc
 st.success(f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
