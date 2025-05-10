@@ -1,9 +1,10 @@
-# ───────────────────────────────────────────────────────────────────────────────
-#  Scream-Zone Finder v3.1 – Antwerpen  (hard-coded Google Street View-key)
-# ───────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────────────────────
+#  Scream-Zone Finder v3.1 – Antwerpen  (met gegarandeerde afbeeldingen)
+# ────────────────────────────────────────────────────────────────────────────────
 import ast
-import random
 import os
+import random
+import json
 from pathlib import Path
 
 import folium
@@ -21,8 +22,9 @@ APP_TITLE = "📣 Scream-Zone Finder – Antwerpen"
 CENTER = (51.2194, 4.4025)
 BOX = dict(lat_min=51.1500, lat_max=51.3000, lon_min=4.2500, lon_max=4.5200)
 
-# ⚠️ Hard-coded sleutel – vervang hier als je later een andere key krijgt
-GOOGLE_KEY = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
+# Lees Street-View-key uit secrets of env
+GOOGLE_KEY = st.secrets.get("GCP_STREETVIEW_KEY",
+                            os.getenv("GOOGLE_STREETVIEW_KEY", "")).strip()
 
 DATASET_ID = "ns2agi/antwerp-osm-navigator"
 ZONE_SPECS = {
@@ -74,26 +76,31 @@ def classify(tags):
     return "✅ Rustige plek"
 
 
-def colour(rating):
-    if "🔇" in rating or "❌" in rating:
+def colour(label_or_rating: str):
+    if "🔇" in label_or_rating or "❌" in label_or_rating:
         return "red"
-    if "🔊🔊🔊🔊" in rating or "✅" in rating:
+    if "🔊🔊🔊🔊" in label_or_rating or "✅" in label_or_rating:
         return "green"
     return "orange"
 
 
-def rnd_coord():
-    return random.uniform(BOX["lat_min"], BOX["lat_max"]), random.uniform(BOX["lon_min"], BOX["lon_max"])
+def rnd_coord():  # random punt in bounding-box
+    return random.uniform(BOX["lat_min"], BOX["lat_max"]), \
+        random.uniform(BOX["lon_min"], BOX["lon_max"])
 
 # ---------- IMAGE HANDLING ----------------------------------------------------
 
 
 @st.cache_data(ttl=24*3600, show_spinner=False)
 def streetview_url(lat, lon, size="300x200"):
+    """Return StreetView URL - or None if Google says no image."""
+    if not GOOGLE_KEY:
+        return None
     meta = ("https://maps.googleapis.com/maps/api/streetview/metadata"
             f"?location={lat},{lon}&key={GOOGLE_KEY}")
     try:
-        if requests.get(meta, timeout=2).json().get("status") == "OK":
+        status = requests.get(meta, timeout=2).json().get("status")
+        if status == "OK":
             return ("https://maps.googleapis.com/maps/api/streetview"
                     f"?size={size}&location={lat},{lon}&key={GOOGLE_KEY}")
     except Exception:
@@ -103,7 +110,11 @@ def streetview_url(lat, lon, size="300x200"):
 
 @st.cache_data(ttl=24*3600, show_spinner=False)
 def place_image(lat, lon, kw="quiet"):
-    return streetview_url(lat, lon) or f"https://source.unsplash.com/300x200/?{kw}"
+    """Guaranteed image URL for popup."""
+    url = streetview_url(lat, lon)
+    if url:
+        return url
+    return f"https://source.unsplash.com/300x200/?{kw}"
 
 # ---------- DATA LOADING ------------------------------------------------------
 
@@ -153,9 +164,14 @@ with st.sidebar:
     show_osm = st.checkbox("Toon OSM-zones", True)
     show_exp = st.checkbox("Toon experimentele zones", True)
     show_heat = st.checkbox("Heatmap", False)
+
+    if not GOOGLE_KEY:
+        st.warning(
+            "🔑 Voeg een Google Street-View API-key toe om echte foto’s te krijgen.")
     st.markdown("---")
+    st.markdown("### Legenda")
     st.markdown(
-        "🧍 **Gebruiker**  🟢 **Aanbevolen**  🔴 **Vermijden**  🟠 **Experimenteel**")
+        "🧍 **Andere gebruiker**  \n🟢 **Aanbevolen**  \n🔴 **Vermijden**  \n🟠 **Experimenteel**")
 
 # ---------- DATA PREP ---------------------------------------------------------
 osm = load_osm()
@@ -179,6 +195,7 @@ osm_grp = MarkerCluster(name="🟢 Aanbevolen").add_to(m)
 bad_grp = MarkerCluster(name="🔴 Vermijden").add_to(m)
 exp_grp = MarkerCluster(name="🟠 Experimenteel").add_to(m)
 
+# fake users
 if show_ppl:
     for _ in range(25):
         lat, lon = rnd_coord()
@@ -187,6 +204,7 @@ if show_ppl:
                           html=f"<div style='font-size:24px;'>{random.choice(['😎','👽','🐸','😱','🤖'])}</div>")
                       ).add_to(ppl_grp)
 
+# OSM markers
 if show_osm:
     for _, r in near_osm.iterrows():
         img = place_image(r.lat, r.lon, "quiet")
@@ -198,26 +216,28 @@ if show_osm:
                       icon=folium.Icon(color="green", icon="volume-up")
                       ).add_to(osm_grp)
 
+# experimental
 for _, r in exp.iterrows():
     img = place_image(r.lat, r.lon, r.kw)
     html = (f"<a href='{img}' target='_blank'>"
             f"<img src='{img}' width='250'></a><br>"
-            f"<b>{r.emoji} {r.ztype}</b><br>"
-            f"Acoustics: {r.acoust}<br>Safety: {r.safe}<br>Rating: {r.rate}")
+            f"<b>{r.emoji} {r.ztype}</b><br>Acoustics: {r.acoust}<br>Safety: {r.safe}<br>Rating: {r.rate}")
     grp = bad_grp if ("🔇" in r.rate or "❌" in r.safe) else exp_grp
     folium.Marker([r.lat, r.lon],
                   popup=folium.Popup(html, max_width=270),
                   icon=folium.Icon(color=colour(r.rate), icon="volume-up")
                   ).add_to(grp)
 
+# heatmap
 if show_heat and not near_osm.empty:
     HeatMap(near_osm[["lat", "lon"]].values.tolist(),
-            radius=12, blur=15, min_opacity=0.3, name="Heatmap").add_to(m)
+            radius=12, blur=15, min_opacity=0.3,
+            name="Heatmap").add_to(m)
 
 folium.LayerControl().add_to(m)
 
 # ---------- RENDER ------------------------------------------------------------
 st.subheader("🗺️ Kaart")
-st_folium(m, height=600, width=820)
+st_folium(m, height=1500, width=1200)
 
 st.caption("Data : OpenStreetMap × Hugging Face — Tool by Yorbe & Angelo 🚀")
