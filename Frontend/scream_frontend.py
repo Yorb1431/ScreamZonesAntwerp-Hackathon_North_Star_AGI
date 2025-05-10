@@ -27,7 +27,6 @@ activiteiten = {
     "Rustige plek": ["mediteren", "creatief zijn", "dagboek schrijven"]
 }
 
-
 def safe_parse(tag):
     if isinstance(tag, dict):
         return tag
@@ -37,7 +36,6 @@ def safe_parse(tag):
         except:
             return {}
     return {}
-
 
 def classify_tags(tags):
     if not tags or tags == {}:
@@ -60,7 +58,6 @@ def classify_tags(tags):
 
     return "⚠️ Onzeker"
 
-
 def kleur(label):
     if "🟢" in label:
         return "green"
@@ -71,21 +68,16 @@ def kleur(label):
     else:
         return "orange"
 
-
 def suggest_activiteit(label):
     for key, opties in activiteiten.items():
         if key.lower() in label.lower():
             return random.choice(opties)
     return "verkennen"
 
-
 def generate_random_name():
-    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan",
-                 "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
-    achternamen = ["Van Dijk", "Janssens", "Peeters",
-                   "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
+    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan", "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
+    achternamen = ["Van Dijk", "Janssens", "Peeters", "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
     return f"{random.choice(voornamen)} {random.choice(achternamen)}"
-
 
 def fast_haversine(lat1, lon1, lat2_array, lon2_array):
     R = 6371000
@@ -93,11 +85,9 @@ def fast_haversine(lat1, lon1, lat2_array, lon2_array):
     lat2_rad, lon2_rad = radians(lat2_array), radians(lon2_array)
     dlat = lat2_rad - lat1_rad
     dlon = lon2_rad - lon1_rad
-    a = np.sin(dlat / 2)**2 + cos(lat1_rad) * \
-        cos(lat2_rad) * np.sin(dlon / 2)**2
+    a = np.sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * np.sin(dlon / 2)**2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     return R * c
-
 
 @st.cache_data
 def load_and_classify():
@@ -108,7 +98,6 @@ def load_and_classify():
     df['label'] = df['tags_parsed'].apply(classify_tags)
     df = df.sample(n=min(1000, len(df)))
     return df
-
 
 if 'user_loc' not in st.session_state:
     st.session_state.user_loc = None
@@ -126,12 +115,10 @@ if not st.session_state.user_loc:
     st.stop()
 
 user_loc = st.session_state.user_loc
-st.success(
-    f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
+st.success(f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
 
 df = load_and_classify()
-df['afstand_m'] = fast_haversine(
-    user_loc[0], user_loc[1], df['lat'], df['lon'])
+df['afstand_m'] = fast_haversine(user_loc[0], user_loc[1], df['lat'], df['lon'])
 
 st.subheader("🔍 Filteropties")
 if 'filter_active' not in st.session_state:
@@ -200,6 +187,6 @@ heat_data = [[row['lat'], row['lon']] for _, row in df.iterrows()]
 HeatMap(heat_data, radius=12, blur=15, min_opacity=0.3).add_to(m)
 
 st.subheader("🗌 Kaartweergave")
-st_folium(m, width=1400, height=1000)
+st_folium(m, width=700, height=500)
 
 st.caption("Data: OpenStreetMap x Hugging Face | Uitbreiding door Yorbe & Angelo 🚀")
