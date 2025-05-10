@@ -110,7 +110,7 @@ m = folium.Map(location=user_loc, zoom_start=14)
 # 🧘 Jij
 folium.Marker(
     location=user_loc,
-    popup="🧘 Hier ben jij!",
+    popup="🧘 Hier ben jij! ",
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
