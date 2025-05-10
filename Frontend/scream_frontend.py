@@ -10,15 +10,10 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import random
 
-# ✅ MOET HIER KOMEN
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
-
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
-# 🔑 VUL HIER JOUW GOOGLE API KEY IN
 api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
-
-# ====== Functies ======
 
 
 def safe_parse(tag):
@@ -77,7 +72,6 @@ def load_and_classify():
     return df[df['label'].str.startswith("✅")].copy()
 
 
-# ✅ LOCATIE ÉÉN KEER OPHALEN (alleen handmatig ophalen bij knopdruk)
 if 'user_loc' not in st.session_state:
     st.session_state.user_loc = None
 
@@ -97,38 +91,34 @@ user_loc = st.session_state.user_loc
 st.success(
     f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
 
-# Keuzemenu vóór de kaart laadt
 keuze = st.radio("Waar heb je NU nood aan?", [
     "🔎 Toon ALLE scream zones in Antwerpen",
     "📍 Toon ENKEL zones binnen 500 meter"
 ])
 
-# Dataset laden
 df = load_and_classify()
 df['afstand_m'] = df.apply(lambda row: geodesic(
     user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
 if keuze == "📍 Toon ENKEL zones binnen 500 meter":
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
-    st.subheader("📍 Scream zones binnen 500 meter")
     if filtered_df.empty:
         st.warning(
             "😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
+        st.stop()
+    st.subheader("📍 Scream zones binnen 500 meter")
 else:
     filtered_df = df.sort_values('afstand_m')
     st.subheader("📍 Alle scream zones in Antwerpen")
 
-# 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
 
-# 🧘 Jij
 folium.Marker(
     location=user_loc,
     popup="🧘 Hier ben jij! ",
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
-# 👥 Willekeurige screamers
 other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
 for _ in range(20):
     rand_lat = random.uniform(51.1800, 51.2600)
@@ -141,7 +131,6 @@ for _ in range(20):
             html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
 
-# 📸 Scream zones met foto’s
 for _, row in filtered_df.iterrows():
     lat, lon = row['lat'], row['lon']
     streetview_url = (
@@ -173,7 +162,6 @@ for _, row in filtered_df.iterrows():
         icon=folium.Icon(color=kleur(row['label']), icon='volume-up')
     ).add_to(m)
 
-# 🔥 Heatmap
 heat_data = [[row['lat'], row['lon']] for _, row in df.iterrows()]
 HeatMap(heat_data, radius=12, blur=15, min_opacity=0.3).add_to(m)
 
@@ -181,37 +169,3 @@ st.subheader("🗺️ Kaartweergave")
 st_folium(m, width=700, height=500)
 
 st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
-
-# 📬 Suggestieformulier
-st.subheader("📬 Stel een nieuwe scream zone voor")
-
-with st.form("scream_form"):
-    naam = st.text_input("Jouw naam (optioneel)", "")
-    lat_input = st.number_input("Breedtegraad (lat)", format="%.6f")
-    lon_input = st.number_input("Lengtegraad (lon)", format="%.6f")
-    zone_type = st.selectbox(
-        "Type zone", ["Rustig", "Natuurgebied", "Industrie", "Anders"])
-    opmerking = st.text_area(
-        "Waarom is dit een goeie plek om te schreeuwen?", "")
-    verzenden = st.form_submit_button("✅ Verstuur")
-
-    if verzenden:
-        nieuw = pd.DataFrame([{
-            "naam": naam or "🕵️ Anoniem",
-            "lat": lat_input,
-            "lon": lon_input,
-            "type": zone_type,
-            "opmerking": opmerking
-        }])
-
-        try:
-            bestandsnaam = "suggested_zones.csv"
-            nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(
-                bestandsnaam), index=False)
-            st.success("Bedankt voor je suggestie! 🎉")
-        except Exception as e:
-            st.error(f"Er ging iets mis bij het opslaan: {e}")
-
-if pd.io.common.file_exists("suggested_zones.csv"):
-    suggesties = pd.read_csv("suggested_zones.csv")
-    st.dataframe(suggesties)
