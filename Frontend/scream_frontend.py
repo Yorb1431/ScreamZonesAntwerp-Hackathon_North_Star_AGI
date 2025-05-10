@@ -50,6 +50,14 @@ def kleur(label):
         return "orange"
 
 
+def generate_random_name():
+    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan",
+                 "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
+    achternamen = ["Van Dijk", "Janssens", "Peeters",
+                   "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
+    return f"{random.choice(voornamen)} {random.choice(achternamen)}"
+
+
 @st.cache_data
 def load_and_classify():
     dataset = load_dataset("ns2agi/antwerp-osm-navigator")
@@ -108,21 +116,22 @@ else:
 # 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
 
-# 🧠 Jij als karakter op de kaart
+# 🧠 Jij als karakter op de kaart (extra duidelijk zichtbaar)
 folium.Marker(
     location=user_loc,
-    popup="🧠 Hier ben ik – je scream buddy!",
-    icon=folium.DivIcon(html=f"""<div style='font-size:24px;'>🧠</div>""")
+    popup="🧘 Hier ben jij! (de scream master)",
+    icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
-# 👥 Andere willekeurige screamers
-other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌"]
-for _ in range(8):
-    offset_lat = random.uniform(-0.004, 0.004)
-    offset_lon = random.uniform(-0.004, 0.004)
+# 👥 Andere willekeurige screamers verspreid over Antwerpen
+other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
+for _ in range(20):
+    rand_lat = random.uniform(51.1800, 51.2600)  # Antwerpen area
+    rand_lon = random.uniform(4.3500, 4.4800)
+    random_name = generate_random_name()
     folium.Marker(
-        location=[user_loc[0] + offset_lat, user_loc[1] + offset_lon],
-        popup="Een andere scream visitor...",
+        location=[rand_lat, rand_lon],
+        popup=f"👤 {random_name} is aan het schreeuwen...",
         icon=folium.DivIcon(
             html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
