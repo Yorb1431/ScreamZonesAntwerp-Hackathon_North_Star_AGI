@@ -119,7 +119,7 @@ m = folium.Map(location=user_loc, zoom_start=14)
 # 🧠 Jij als karakter op de kaart (extra duidelijk zichtbaar)
 folium.Marker(
     location=user_loc,
-    popup="🧘 Hier ben jij! (de scream master)",
+    popup="🧘 Hier ben jij! ",
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
@@ -131,7 +131,7 @@ for _ in range(20):
     random_name = generate_random_name()
     folium.Marker(
         location=[rand_lat, rand_lon],
-        popup=f"👤 {random_name} is aan het schreeuwen...",
+        popup=f"👤 {random_name}!!!",
         icon=folium.DivIcon(
             html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
