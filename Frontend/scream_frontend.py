@@ -20,7 +20,7 @@ APP_TITLE = "📣 Scream-Zone Finder – Antwerpen"
 ANTWERP_CENTER = (51.2194, 4.4025)
 BOUNDS = dict(lat_min=51.1500, lat_max=51.3000, lon_min=4.2500, lon_max=4.5200)
 
-GOOGLE_KEY = "YOUR_GOOGLE_STREETVIEW_KEY"
+GOOGLE_KEY = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 DATASET_ID = "ns2agi/antwerp-osm-navigator"
 
 ZONE_SPECS = {
@@ -36,14 +36,12 @@ RND_SEED = 42
 random.seed(RND_SEED)
 
 # ─────────── STREAMLIT CONFIG ───────────
-st.set_page_config(layout="wide", page_icon="📣", page_title="Scream-Zone Finder")
+st.set_page_config(layout="wide", page_icon="📣",
+                   page_title="Scream-Zone Finder")
 st.title(APP_TITLE)
 
-# ─────────── HELPER STATE ───────────
-if "fallback_active" not in st.session_state:
-    st.session_state.fallback_active = False
-
 # ─────────── HELPERS ───────────
+
 
 def safe_parse(tag):
     if isinstance(tag, dict):
@@ -54,6 +52,7 @@ def safe_parse(tag):
         except Exception:
             return {}
     return {}
+
 
 def classify(tags):
     if not tags:
@@ -68,6 +67,7 @@ def classify(tags):
         return "✅ Industriegebied"
     return "✅ Rustige plek"
 
+
 def color_for(label_or_rating):
     if "🔇" in label_or_rating or "❌" in label_or_rating:
         return "red"
@@ -75,39 +75,36 @@ def color_for(label_or_rating):
         return "green"
     return "orange"
 
+
 def rnd_coord():
     return (random.uniform(BOUNDS["lat_min"], BOUNDS["lat_max"]),
             random.uniform(BOUNDS["lon_min"], BOUNDS["lon_max"]))
+
 
 def place_image(lat, lon, kw=None):
     if GOOGLE_KEY and GOOGLE_KEY != "YOUR_GOOGLE_STREETVIEW_KEY":
         url = (f"https://maps.googleapis.com/maps/api/streetview"
                f"?size=400x250&location={lat},{lon}&fov=80&heading=70&pitch=0&key={GOOGLE_KEY}")
         try:
-            r = requests.get(url, timeout=3)
-            if r.status_code == 200 and b"<html" not in r.content and len(r.content) > 1500:
+            r = requests.get(url, timeout=2)
+            if r.status_code == 200 and len(r.content) > 1000:
                 return url
-            else:
-                st.session_state.fallback_active = True
         except Exception:
-            st.session_state.fallback_active = True
-    else:
-        st.session_state.fallback_active = True
-    fallback_kw = kw or random.choice(["quiet", "park", "forest", "industrial", "street", "nature"])
+            pass
+    fallback_kw = kw or random.choice(
+        ["quiet", "park", "forest", "industrial", "street", "nature"])
     return f"https://source.unsplash.com/400x250/?{fallback_kw}"
+
 
 @st.cache_data(ttl=24*3600, show_spinner="OSM-data laden…")
 def load_osm():
-    try:
-        ds = load_dataset(DATASET_ID)["train"].to_pandas()
-        df = ds[["lat", "lon", "tags"]].dropna()
-        df["tags"] = df["tags"].apply(safe_parse)
-        df["label"] = df["tags"].apply(classify)
-        df = df[df["label"].str.startswith("✅")].copy()
-        return df
-    except Exception as e:
-        st.error(f"❌ Kon de dataset niet laden: {e}")
-        return pd.DataFrame([{"lat": 51.22, "lon": 4.40, "label": "✅ Rustige plek"}])
+    ds = load_dataset(DATASET_ID)["train"].to_pandas()
+    df = ds[["lat", "lon", "tags"]].dropna()
+    df["tags"] = df["tags"].apply(safe_parse)
+    df["label"] = df["tags"].apply(classify)
+    df = df[df["label"].str.startswith("✅")].copy()
+    return df
+
 
 @st.cache_data(ttl=24*3600)
 def experimental_df():
@@ -119,9 +116,12 @@ def experimental_df():
         rows.append(dict(lat=lat, lon=lon, ztype=z, **spec))
     return pd.DataFrame(rows)
 
+
 def geodist(p1, p2): return geodesic(p1, p2).meters
 
 # ─────────── LOCATION ───────────
+
+
 def get_user_loc():
     if "loc" in st.session_state:
         return st.session_state.loc
@@ -134,9 +134,94 @@ def get_user_loc():
     st.session_state.loc = coords
     return coords
 
+
 user_loc = get_user_loc()
 st.success(f"✅ Je bent hier: {user_loc[0]:.5f}, {user_loc[1]:.5f}")
 
-# ─────────── FOUTMELDING ───────────
-if st.session_state.fallback_active:
-    st.warning("📷 Street View kon niet geladen worden — virtuele beelden via Unsplash worden getoond.")
+# ─────────── SIDEBAR ───────────
+with st.sidebar:
+    st.header("Instellingen")
+    radius = st.slider("Zoekradius (m)", 100, 2000, 500, 50)
+    show_people = st.checkbox("Toon andere gebruikers", value=True)
+    show_osm = st.checkbox("Toon OSM-zones (aanbevolen)", value=True)
+    show_exp = st.checkbox("Toon experimentele zones", value=True)
+    show_heat = st.checkbox("Heatmap", value=False)
+    st.markdown("---")
+    st.markdown("### Legenda")
+    st.markdown("🧍 **Andere gebruiker**  \n"
+                "🟢 **Aanbevolen zone**  \n"
+                "🔴 **Vermijden** / risico  \n"
+                "🟠 **Experimenteel**")
+
+# ─────────── DATA PREP ───────────
+osm = load_osm()
+osm["dist"] = osm.apply(lambda r: geodist(user_loc, (r.lat, r.lon)), axis=1)
+near_osm = osm[osm.dist <= radius]
+
+exp_df = experimental_df() if show_exp else pd.DataFrame()
+
+# ─────────── METRICS ───────────
+a, b, c = st.columns(3)
+a.metric("OSM-zones", len(near_osm))
+b.metric("Experimenteel", len(exp_df))
+c.metric("Radius (m)", radius)
+
+# ─────────── MAP INIT ───────────
+m = folium.Map(location=user_loc, zoom_start=14, control_scale=True)
+
+people_group = MarkerCluster(name="🙋 Andere gebruikers").add_to(m)
+osm_group = MarkerCluster(name="🟢 Aanbevolen zones").add_to(m)
+bad_group = MarkerCluster(name="🔴 Vermijden").add_to(m)
+exp_group = MarkerCluster(name="🟠 Experimenteel").add_to(m)
+
+folium.Marker(user_loc,
+              tooltip="This is you!",
+              icon=folium.DivIcon(html="<div style='font-size:75px;'>🧘</div>")
+              ).add_to(m)
+
+if show_people:
+    random_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
+    for _ in range(25):
+        lat, lon = rnd_coord()
+        folium.Marker(
+            location=[lat, lon],
+            tooltip="Andere gebruiker",
+            icon=folium.DivIcon(
+                html=f"<div style='font-size:24px;'>{random.choice(random_emojis)}</div>")
+        ).add_to(people_group)
+
+if show_osm:
+    for _, r in near_osm.iterrows():
+        img = place_image(r.lat, r.lon, kw="quiet")
+        popup_html = f"<b>{r.label}</b><br>Afstand: {r.dist:.0f} m<br><img src='{img}' width='250'>"
+        folium.Marker(
+            location=[r.lat, r.lon],
+            popup=folium.Popup(popup_html, max_width=260),
+            icon=folium.Icon(color="green", icon="volume-up")
+        ).add_to(osm_group)
+
+for _, r in exp_df.iterrows():
+    img = place_image(r.lat, r.lon, kw=r.kw)
+    html = (f"<b>{r.emoji} {r.ztype}</b><br>"
+            f"Acoustics: {r.acoust}<br>"
+            f"Safety: {r.safe}<br>"
+            f"Rating: {r.rate}<br>"
+            f"<img src='{img}' width='250'>")
+    grp = bad_group if ("🔇" in r.rate or "❌" in r.safe) else exp_group
+    folium.Marker(
+        location=[r.lat, r.lon],
+        popup=folium.Popup(html, max_width=260),
+        icon=folium.Icon(color=color_for(r.rate), icon="volume-up")
+    ).add_to(grp)
+
+if show_heat and not near_osm.empty:
+    HeatMap(near_osm[["lat", "lon"]].values.tolist(),
+            radius=12, blur=15, min_opacity=0.3,
+            name="Heatmap").add_to(m)
+
+folium.LayerControl().add_to(m)
+
+st.subheader("🗺️ Kaartweergave")
+st_folium(m, width=800, height=600)
+
+st.caption("Data: OpenStreetMap × Hugging Face — Tool by Yorbe & Angelo 🚀")
