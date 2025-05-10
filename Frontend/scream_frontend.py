@@ -10,15 +10,10 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import random
 
-# ✅ MOET HIER KOMEN
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
-
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
-# 🔑 VUL HIER JOUW GOOGLE API KEY IN
 api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
-
-# ====== Functies ======
 
 
 def safe_parse(tag):
@@ -77,7 +72,6 @@ def load_and_classify():
     return df[df['label'].str.startswith("✅")].copy()
 
 
-# ✅ LOCATIE ÉÉN KEER OPHALEN (alleen handmatig ophalen bij knopdruk)
 if 'user_loc' not in st.session_state:
     st.session_state.user_loc = None
 
@@ -121,11 +115,12 @@ if st.session_state.filter_active:
         st.warning(
             "😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
 else:
-    filtered_df = df.sort_values('afstand_m').head(5)
-    st.subheader("📍 Dichtstbijzijnde scream zones")
+    # ⚠️ Laat alles zien, niet enkel head(5)
+    filtered_df = df.sort_values('afstand_m')
+    st.subheader("📍 Alle scream zones in Antwerpen")
 
 # 🌍 Kaart genereren
-m = folium.Map(location=user_loc, zoom_start=14)
+m = folium.Map(location=user_loc, zoom_start=13)
 
 # 🧘 Jij
 folium.Marker(
@@ -187,38 +182,3 @@ st.subheader("🗺️ Kaartweergave")
 st_folium(m, width=700, height=500)
 
 st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
-
-# 📬 Suggestieformulier
-st.subheader("📬 Stel een nieuwe scream zone voor")
-
-with st.form("scream_form"):
-    naam = st.text_input("Jouw naam (optioneel)", "")
-    lat_input = st.number_input("Breedtegraad (lat)", format="%.6f")
-    lon_input = st.number_input("Lengtegraad (lon)", format="%.6f")
-    zone_type = st.selectbox(
-        "Type zone", ["Rustig", "Natuurgebied", "Industrie", "Anders"])
-    opmerking = st.text_area(
-        "Waarom is dit een goeie plek om te schreeuwen?", "")
-    verzenden = st.form_submit_button("✅ Verstuur")
-
-    if verzenden:
-        nieuw = pd.DataFrame([{
-            "naam": naam or "🕵️ Anoniem",
-            "lat": lat_input,
-            "lon": lon_input,
-            "type": zone_type,
-            "opmerking": opmerking
-        }])
-
-        try:
-            bestandsnaam = "suggested_zones.csv"
-            nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(
-                bestandsnaam), index=False)
-            st.success("Bedankt voor je suggestie! 🎉")
-        except Exception as e:
-            st.error(f"Er ging iets mis bij het opslaan: {e}")
-
-if pd.io.common.file_exists("suggested_zones.csv"):
-    st.markdown("### 📄 Ingestuurde scream zones")
-    suggesties = pd.read_csv("suggested_zones.csv")
-    st.dataframe(suggesties)
