@@ -13,9 +13,19 @@ import numpy as np
 from numpy import radians, cos, sin, sqrt, arctan2
 
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
-st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
+st.title("📣 Vind een unieke plek om te schreeuwen of ontspannen in Antwerpen")
 
 api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
+
+activiteiten = {
+    "Natuurgebied": ["wandelen", "vogels spotten", "yoga", "lezen"],
+    "Industriegebied": ["graffiti bekijken", "filmen", "urban fotografie"],
+    "Afgelegen zone": ["screamen", "filosoferen", "gedichten schrijven"],
+    "Niet geschikt": ["druk verkeer", "geen rust"],
+    "Onzeker": ["even checken in het echt"],
+    "Okay": ["even pauzeren", "luchten", "bellen"],
+    "Rustige plek": ["mediteren", "creatief zijn", "dagboek schrijven"]
+}
 
 def safe_parse(tag):
     if isinstance(tag, dict):
@@ -31,28 +41,38 @@ def classify_tags(tags):
     if not tags or tags == {}:
         return "⚠️ Onzeker"
 
-    disqualifiers = ['building', 'addr:street', 'addr:housenumber', 'highway', 'railway', 'amenity']
-    if any(k in tags for k in disqualifiers):
-        return "❌ Niet geschikt"
+    if any(k in tags for k in ['building', 'addr:street', 'addr:housenumber']):
+        return "🔴 Niet geschikt (bebouwd)"
+    if any(k in tags for k in ['highway', 'railway', 'amenity']):
+        return "🔴 Niet geschikt (druk/voorzieningen)"
 
     if tags.get('landuse') in ['industrial', 'railway']:
-        return "✅ Industriegebied"
-    if tags.get('natural') in ['wood', 'scrub', 'heath', 'grassland']:
-        return "✅ Natuurgebied"
-    if tags.get('leisure') in ['park', 'nature_reserve']:
-        return "✅ Natuurgebied"
+        return "🟢 Industriegebied"
+    if tags.get('natural') in ['wood', 'scrub', 'heath', 'grassland'] or tags.get('leisure') in ['park', 'nature_reserve']:
+        return "🟢 Natuurgebied"
     if tags.get('service') in ['alley', 'industrial']:
-        return "✅ Afgelegen zone"
+        return "🟢 Afgelegen zone"
+
+    if 'leisure' in tags:
+        return "🔹 Okay zone"
 
     return "⚠️ Onzeker"
 
 def kleur(label):
-    if "✅" in label:
+    if "🟢" in label:
         return "green"
-    elif "❌" in label:
+    elif "🔹" in label:
+        return "blue"
+    elif "🔴" in label:
         return "red"
     else:
         return "orange"
+
+def suggest_activiteit(label):
+    for key, opties in activiteiten.items():
+        if key.lower() in label.lower():
+            return random.choice(opties)
+    return "verkennen"
 
 def generate_random_name():
     voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan", "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
@@ -60,7 +80,7 @@ def generate_random_name():
     return f"{random.choice(voornamen)} {random.choice(achternamen)}"
 
 def fast_haversine(lat1, lon1, lat2_array, lon2_array):
-    R = 6371000  # meters
+    R = 6371000
     lat1_rad, lon1_rad = radians(lat1), radians(lon1)
     lat2_rad, lon2_rad = radians(lat2_array), radians(lon2_array)
     dlat = lat2_rad - lat1_rad
@@ -76,8 +96,7 @@ def load_and_classify():
     df = df[['lat', 'lon', 'tags']].dropna()
     df['tags_parsed'] = df['tags'].apply(safe_parse)
     df['label'] = df['tags_parsed'].apply(classify_tags)
-    df = df[df['label'].str.startswith("\u2705")].copy()
-    df = df.sample(n=min(500, len(df)))
+    df = df.sample(n=min(1000, len(df)))
     return df
 
 if 'user_loc' not in st.session_state:
@@ -107,20 +126,20 @@ if 'filter_active' not in st.session_state:
 
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("🧽 Waar kan ik NU schreeuwen?"):
+    if st.button("🧽 Waar kan ik NU heen?"):
         st.session_state.filter_active = True
 with col2:
-    if st.button("🔄 Toon alle scream zones"):
+    if st.button("🔄 Toon alle zones"):
         st.session_state.filter_active = False
 
 if st.session_state.filter_active:
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
-    st.subheader("📍 Scream zones binnen 500 meter")
+    st.subheader("📍 Zones binnen 500 meter")
     if filtered_df.empty:
-        st.warning("😥 Geen scream zone binnen 500 meter. Misschien even wandelen?")
+        st.warning("😥 Geen geschikte zone dichtbij. Wandel een beetje!")
 else:
     filtered_df = df.sort_values('afstand_m')
-    st.subheader("📍 Alle scream zones in Antwerpen")
+    st.subheader("📍 Alle locaties")
 
 m = folium.Map(location=user_loc, zoom_start=13)
 
@@ -130,20 +149,10 @@ folium.Marker(
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
-other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
-for _ in range(20):
-    rand_lat = random.uniform(51.1800, 51.2600)
-    rand_lon = random.uniform(4.3500, 4.4800)
-    random_name = generate_random_name()
-    folium.Marker(
-        location=[rand_lat, rand_lon],
-        popup=f"👤 {random_name}!!!",
-        icon=folium.DivIcon(
-            html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
-    ).add_to(m)
-
 for _, row in filtered_df.iterrows():
     lat, lon = row['lat'], row['lon']
+    activiteit = suggest_activiteit(row['label'])
+
     streetview_url = (
         f"https://maps.googleapis.com/maps/api/streetview"
         f"?size=300x200&location={lat},{lon}&fov=80&heading=70&pitch=0&key={api_key}"
@@ -164,13 +173,14 @@ for _, row in filtered_df.iterrows():
     popup_html = f"""
     <b>{row['label']}</b><br>
     Afstand: {round(row['afstand_m'])} meter<br>
-    <img src="{foto_url}" width="250">
+    Tip: {activiteit}<br>
+    <img src=\"{foto_url}\" width=\"250\">
     """
 
     folium.Marker(
         location=[lat, lon],
         popup=folium.Popup(popup_html, max_width=300),
-        icon=folium.Icon(color=kleur(row['label']), icon='volume-up')
+        icon=folium.Icon(color=kleur(row['label']), icon='info-sign')
     ).add_to(m)
 
 heat_data = [[row['lat'], row['lon']] for _, row in df.iterrows()]
@@ -179,4 +189,4 @@ HeatMap(heat_data, radius=12, blur=15, min_opacity=0.3).add_to(m)
 st.subheader("🗌 Kaartweergave")
 st_folium(m, width=700, height=500)
 
-st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
+st.caption("Data: OpenStreetMap x Hugging Face | Uitbreiding door Yorbe & Angelo 🚀")
