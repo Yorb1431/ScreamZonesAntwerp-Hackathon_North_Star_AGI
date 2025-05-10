@@ -70,5 +70,24 @@ for _, row in map_df.iterrows():
         icon=folium.Icon(color=kleur(row['scream_label']), icon='volume-up')
     ).add_to(m)
 
+from geopy.distance import geodesic
+
+# Bijvoorbeeld: gebruiker staat bij Antwerpen Centraal
+user_location = (51.2175, 4.4214)
+
+# Filter op alleen geschikte zones
+suitable = df[df['scream_label'].str.startswith("✅")].copy()
+
+# Bereken afstand
+suitable['afstand_m'] = suitable.apply(
+    lambda row: geodesic(user_location, (row['lat'], row['lon'])).meters,
+    axis=1
+)
+
+# Toon de 3 dichtstbijzijnde
+print("📍 Dichtstbijzijnde scream zones:")
+print(suitable.sort_values('afstand_m')[['lat', 'lon', 'scream_label', 'afstand_m']].head(3))
+
+
 m.save("classified_scream_zones_map.html")
 print("✅ Kaart opgeslagen als 'classified_scream_zones_map.html'")
