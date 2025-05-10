@@ -1,3 +1,4 @@
+import requests
 import streamlit as st
 import pandas as pd
 import folium
@@ -9,8 +10,10 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import random
 
-# ====== Functies ======
+# 🔑 VUL HIER JOUW GOOGLE API KEY IN
+api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 
+# ====== Functies ======
 
 def safe_parse(tag):
     if isinstance(tag, dict):
@@ -21,7 +24,6 @@ def safe_parse(tag):
         except:
             return {}
     return {}
-
 
 def classify_tags(tags):
     if not tags or tags == {}:
@@ -40,7 +42,6 @@ def classify_tags(tags):
         return "✅ Rustige plek"
     return "⚠️ Onzeker"
 
-
 def kleur(label):
     if "✅" in label:
         return "green"
@@ -49,14 +50,10 @@ def kleur(label):
     else:
         return "orange"
 
-
 def generate_random_name():
-    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan",
-                 "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
-    achternamen = ["Van Dijk", "Janssens", "Peeters",
-                   "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
+    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan", "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
+    achternamen = ["Van Dijk", "Janssens", "Peeters", "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
     return f"{random.choice(voornamen)} {random.choice(achternamen)}"
-
 
 @st.cache_data
 def load_and_classify():
@@ -69,12 +66,10 @@ def load_and_classify():
 
 # ====== App Start ======
 
-
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
 location = get_geolocation()
-
 if location is None:
     st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
     st.stop()
@@ -82,13 +77,10 @@ if location is None:
 lat = location['coords']['latitude']
 lon = location['coords']['longitude']
 user_loc = (lat, lon)
-
 st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
 
-# Dataset laden en klassificeren
 df = load_and_classify()
-df['afstand_m'] = df.apply(lambda row: geodesic(
-    user_loc, (row['lat'], row['lon'])).meters, axis=1)
+df['afstand_m'] = df.apply(lambda row: geodesic(user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
 # 🔘 Filters
 st.subheader("🔍 Filteropties")
@@ -107,8 +99,7 @@ if st.session_state.filter_active:
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
     st.subheader("📍 Scream zones binnen 500 meter")
     if filtered_df.empty:
-        st.warning(
-            "😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
+        st.warning("😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
 else:
     filtered_df = df.sort_values('afstand_m').head(5)
     st.subheader("📍 Dichtstbijzijnde scream zones")
@@ -116,35 +107,58 @@ else:
 # 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
 
-# 🧠 Jij als karakter op de kaart (extra duidelijk zichtbaar)
+# 🧘 Jij
 folium.Marker(
     location=user_loc,
-    popup="🧘 Hier ben jij! ",
+    popup="🧘 Hier ben jij!",
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
-# 👥 Andere willekeurige screamers verspreid over Antwerpen
+# 👥 Willekeurige screamers
 other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
 for _ in range(20):
-    rand_lat = random.uniform(51.1800, 51.2600)  # Antwerpen area
+    rand_lat = random.uniform(51.1800, 51.2600)
     rand_lon = random.uniform(4.3500, 4.4800)
     random_name = generate_random_name()
     folium.Marker(
         location=[rand_lat, rand_lon],
         popup=f"👤 {random_name}!!!",
-        icon=folium.DivIcon(
-            html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
+        icon=folium.DivIcon(html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
 
-# 📌 Toon scream zones op kaart
+# 📸 Scream zones met foto’s
 for _, row in filtered_df.iterrows():
+    lat, lon = row['lat'], row['lon']
+    streetview_url = (
+        f"https://maps.googleapis.com/maps/api/streetview"
+        f"?size=300x200&location={lat},{lon}&fov=80&heading=70&pitch=0&key={api_key}"
+    )
+    try:
+        response = requests.get(streetview_url, timeout=3)
+        if len(response.content) < 1000:
+            raise Exception("Onbruikbaar beeld")
+        foto_url = streetview_url
+    except:
+        if "industrie" in row['label'].lower():
+            foto_url = "https://source.unsplash.com/300x200/?factory"
+        elif "natuur" in row['label'].lower():
+            foto_url = "https://source.unsplash.com/300x200/?forest"
+        else:
+            foto_url = "https://source.unsplash.com/300x200/?quiet"
+
+    popup_html = f"""
+    <b>{row['label']}</b><br>
+    Afstand: {round(row['afstand_m'])} meter<br>
+    <img src="{foto_url}" width="250">
+    """
+
     folium.Marker(
-        location=[row['lat'], row['lon']],
-        popup=f"{row['label']} ({round(row['afstand_m'])} m)",
+        location=[lat, lon],
+        popup=folium.Popup(popup_html, max_width=300),
         icon=folium.Icon(color=kleur(row['label']), icon='volume-up')
     ).add_to(m)
 
-# 🔥 Heatmap toevoegen
+# 🔥 Heatmap
 heat_data = [[row['lat'], row['lon']] for _, row in df.iterrows()]
 HeatMap(heat_data, radius=12, blur=15, min_opacity=0.3).add_to(m)
 
