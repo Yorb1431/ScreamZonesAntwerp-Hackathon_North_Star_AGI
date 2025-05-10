@@ -61,14 +61,15 @@ st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 # 1. Automatisch gebruikerlocatie ophalen
 location = get_geolocation()
 
-if location and 'coords' in location:
-    lat = location['coords']['latitude']
-    lon = location['coords']['longitude']
-    user_loc = (lat, lon)
-    st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
-else:
-    st.warning("📍 Locatie niet beschikbaar. Sta het toe in je browser en herlaad de pagina.")
+if location is None:
+    st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
     st.stop()
+
+lat = location['coords']['latitude']
+lon = location['coords']['longitude']
+user_loc = (lat, lon)
+
+st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
 
 # 2. Laad dataset & classificeer scream zones
 df = load_and_classify()
