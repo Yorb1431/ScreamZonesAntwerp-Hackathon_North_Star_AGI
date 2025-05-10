@@ -16,16 +16,6 @@ st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 
 
-@st.cache_data
-def load_and_classify():
-    dataset = load_dataset("ns2agi/antwerp-osm-navigator")
-    df = dataset['train'].to_pandas()
-    df = df[['lat', 'lon', 'tags']].dropna()
-    df['tags_parsed'] = df['tags'].apply(safe_parse)
-    df['label'] = df['tags_parsed'].apply(classify_tags)
-    return df[df['label'].str.startswith("✅")].copy()
-
-
 def safe_parse(tag):
     if isinstance(tag, dict):
         return tag
@@ -70,6 +60,16 @@ def generate_random_name():
     achternamen = ["Van Dijk", "Janssens", "Peeters",
                    "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
     return f"{random.choice(voornamen)} {random.choice(achternamen)}"
+
+
+@st.cache_data
+def load_and_classify():
+    dataset = load_dataset("ns2agi/antwerp-osm-navigator")
+    df = dataset['train'].to_pandas()
+    df = df[['lat', 'lon', 'tags']].dropna()
+    df['tags_parsed'] = df['tags'].apply(safe_parse)
+    df['label'] = df['tags_parsed'].apply(classify_tags)
+    return df[df['label'].str.startswith("✅")].copy()
 
 
 if 'user_loc' not in st.session_state:
@@ -119,24 +119,50 @@ folium.Marker(
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
-# Beperk aantal markers voor performance
-max_markers = 200
-for _, row in filtered_df.head(max_markers).iterrows():
+other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
+for _ in range(20):
+    rand_lat = random.uniform(51.1800, 51.2600)
+    rand_lon = random.uniform(4.3500, 4.4800)
+    random_name = generate_random_name()
+    folium.Marker(
+        location=[rand_lat, rand_lon],
+        popup=f"👤 {random_name}!!!",
+        icon=folium.DivIcon(
+            html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
+    ).add_to(m)
+
+for _, row in filtered_df.iterrows():
     lat, lon = row['lat'], row['lon']
-    foto_url = "https://source.unsplash.com/300x200/?forest"  # Simpel placeholderbeeld
+    streetview_url = (
+        f"https://maps.googleapis.com/maps/api/streetview"
+        f"?size=300x200&location={lat},{lon}&fov=80&heading=70&pitch=0&key={api_key}"
+    )
+    try:
+        response = requests.get(streetview_url, timeout=3)
+        if len(response.content) < 1000:
+            raise Exception("Onbruikbaar beeld")
+        foto_url = streetview_url
+    except:
+        if "industrie" in row['label'].lower():
+            foto_url = "https://source.unsplash.com/300x200/?factory"
+        elif "natuur" in row['label'].lower():
+            foto_url = "https://source.unsplash.com/300x200/?forest"
+        else:
+            foto_url = "https://source.unsplash.com/300x200/?quiet"
+
     popup_html = f"""
     <b>{row['label']}</b><br>
     Afstand: {round(row['afstand_m'])} meter<br>
     <img src="{foto_url}" width="250">
     """
+
     folium.Marker(
         location=[lat, lon],
         popup=folium.Popup(popup_html, max_width=300),
         icon=folium.Icon(color=kleur(row['label']), icon='volume-up')
     ).add_to(m)
 
-# Heatmap beperken tot 1000 punten
-heat_data = [[row['lat'], row['lon']] for _, row in df.head(1000).iterrows()]
+heat_data = [[row['lat'], row['lon']] for _, row in df.iterrows()]
 HeatMap(heat_data, radius=12, blur=15, min_opacity=0.3).add_to(m)
 
 st.subheader("🗺️ Kaartweergave")
