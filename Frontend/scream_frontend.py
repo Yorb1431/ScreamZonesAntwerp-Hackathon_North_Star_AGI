@@ -69,6 +69,24 @@ def load_and_classify():
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
+ st.set_page_config(page_title="Scream Zone Finder", layout="wide")
+st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
+
+# ✅ LOCATIE ÉÉN KEER OPHALEN
+if 'user_loc' not in st.session_state:
+    location = get_geolocation()
+    if location is None:
+        st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
+        st.stop()
+    st.session_state.user_loc = (
+        location['coords']['latitude'],
+        location['coords']['longitude']
+    )
+
+user_loc = st.session_state.user_loc
+st.success(f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
+
+
 location = get_geolocation()
 if location is None:
     st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
