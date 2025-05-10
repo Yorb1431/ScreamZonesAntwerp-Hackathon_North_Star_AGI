@@ -7,6 +7,7 @@ from datasets import load_dataset
 import ast
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
+import random
 
 # ====== Functies ======
 
@@ -106,9 +107,27 @@ else:
 
 # 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
-folium.Marker(location=user_loc, popup="📍 Jouw locatie",
-              icon=folium.Icon(color="blue")).add_to(m)
 
+# 🧠 Jij als karakter op de kaart
+folium.Marker(
+    location=user_loc,
+    popup="🧠 Hier ben ik – je scream buddy!",
+    icon=folium.DivIcon(html=f"""<div style='font-size:24px;'>🧠</div>""")
+).add_to(m)
+
+# 👥 Andere willekeurige screamers
+other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌"]
+for _ in range(8):
+    offset_lat = random.uniform(-0.004, 0.004)
+    offset_lon = random.uniform(-0.004, 0.004)
+    folium.Marker(
+        location=[user_loc[0] + offset_lat, user_loc[1] + offset_lon],
+        popup="Een andere scream visitor...",
+        icon=folium.DivIcon(
+            html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
+    ).add_to(m)
+
+# 📌 Toon scream zones op kaart
 for _, row in filtered_df.iterrows():
     folium.Marker(
         location=[row['lat'], row['lon']],
