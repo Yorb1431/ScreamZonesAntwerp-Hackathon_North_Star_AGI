@@ -40,7 +40,8 @@ st.set_page_config(layout="wide", page_icon="📣", page_title="Scream-Zone Find
 st.title(APP_TITLE)
 
 # ─────────── HELPER STATE ───────────
-st.session_state.fallback_active = False
+if "fallback_active" not in st.session_state:
+    st.session_state.fallback_active = False
 
 # ─────────── HELPERS ───────────
 
@@ -83,7 +84,7 @@ def place_image(lat, lon, kw=None):
         url = (f"https://maps.googleapis.com/maps/api/streetview"
                f"?size=400x250&location={lat},{lon}&fov=80&heading=70&pitch=0&key={GOOGLE_KEY}")
         try:
-            r = requests.get(url, timeout=2)
+            r = requests.get(url, timeout=3)
             if r.status_code == 200 and b"<html" not in r.content and len(r.content) > 1500:
                 return url
             else:
@@ -97,12 +98,16 @@ def place_image(lat, lon, kw=None):
 
 @st.cache_data(ttl=24*3600, show_spinner="OSM-data laden…")
 def load_osm():
-    ds = load_dataset(DATASET_ID)["train"].to_pandas()
-    df = ds[["lat", "lon", "tags"]].dropna()
-    df["tags"] = df["tags"].apply(safe_parse)
-    df["label"] = df["tags"].apply(classify)
-    df = df[df["label"].str.startswith("✅")].copy()
-    return df
+    try:
+        ds = load_dataset(DATASET_ID)["train"].to_pandas()
+        df = ds[["lat", "lon", "tags"]].dropna()
+        df["tags"] = df["tags"].apply(safe_parse)
+        df["label"] = df["tags"].apply(classify)
+        df = df[df["label"].str.startswith("✅")].copy()
+        return df
+    except Exception as e:
+        st.error(f"❌ Kon de dataset niet laden: {e}")
+        return pd.DataFrame([{"lat": 51.22, "lon": 4.40, "label": "✅ Rustige plek"}])
 
 @st.cache_data(ttl=24*3600)
 def experimental_df():
