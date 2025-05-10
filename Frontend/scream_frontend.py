@@ -10,7 +10,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import random
 
-# 🔑 VUL HIER JOUW GOOGLE API KEY IN
+# 🔑 GOOGLE API KEY
 api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 
 # ====== Functies ======
@@ -69,16 +69,20 @@ def load_and_classify():
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
-location = get_geolocation()
-if location is None:
-    st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
-    st.stop()
+# ====== Locatie ophalen en vastzetten ======
+if 'user_loc' not in st.session_state:
+    location = get_geolocation()
+    if location is None:
+        st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
+        st.stop()
+    lat = location['coords']['latitude']
+    lon = location['coords']['longitude']
+    st.session_state.user_loc = (lat, lon)
 
-lat = location['coords']['latitude']
-lon = location['coords']['longitude']
-user_loc = (lat, lon)
-st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
+user_loc = st.session_state.user_loc
+st.success(f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
 
+# Dataset laden
 df = load_and_classify()
 df['afstand_m'] = df.apply(lambda row: geodesic(user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
@@ -89,7 +93,7 @@ if 'filter_active' not in st.session_state:
 
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("🧭 Waar kan ik NU schreeuwen?"):
+    if st.button("🧽 Waar kan ik NU schreeuwen?"):
         st.session_state.filter_active = True
 with col2:
     if st.button("🔄 Toon alle scream zones"):
@@ -99,7 +103,7 @@ if st.session_state.filter_active:
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
     st.subheader("📍 Scream zones binnen 500 meter")
     if filtered_df.empty:
-        st.warning("😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
+        st.warning("😥 Geen scream zone binnen 500 meter. Misschien even wandelen?")
 else:
     filtered_df = df.sort_values('afstand_m').head(5)
     st.subheader("📍 Dichtstbijzijnde scream zones")
@@ -115,7 +119,7 @@ folium.Marker(
 ).add_to(m)
 
 # 👥 Willekeurige screamers
-other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
+other_emojis = ["😎", "👽", "🐸", "🧙", "😱", "🤖", "🦼", "🐡", "👿"]
 for _ in range(20):
     rand_lat = random.uniform(51.1800, 51.2600)
     rand_lon = random.uniform(4.3500, 4.4800)
@@ -126,7 +130,7 @@ for _ in range(20):
         icon=folium.DivIcon(html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
 
-# 📸 Scream zones met foto’s
+# 📸 Scream zones met foto's
 for _, row in filtered_df.iterrows():
     lat, lon = row['lat'], row['lon']
     streetview_url = (
@@ -150,6 +154,7 @@ for _, row in filtered_df.iterrows():
     <b>{row['label']}</b><br>
     Afstand: {round(row['afstand_m'])} meter<br>
     <img src="{foto_url}" width="250">
+    <br><a href="https://www.google.com/maps/search/?api=1&query={lat},{lon}" target="_blank">🗺 Open in Google Maps</a>
     """
 
     folium.Marker(
@@ -167,8 +172,8 @@ st_folium(m, width=700, height=500)
 
 st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
 
-st.subheader("📬 Stel een nieuwe scream zone voor")
-
+# 📩 Suggestieformulier
+st.subheader("📩 Stel een nieuwe scream zone voor")
 with st.form("scream_form"):
     naam = st.text_input("Jouw naam (optioneel)", "")
     lat_input = st.number_input("Breedtegraad (lat)", format="%.6f")
@@ -185,9 +190,7 @@ with st.form("scream_form"):
             "type": zone_type,
             "opmerking": opmerking
         }])
-
         try:
-            # Voeg toe aan CSV (of maak aan)
             bestandsnaam = "suggested_zones.csv"
             nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(bestandsnaam), index=False)
             st.success("Bedankt voor je suggestie! 🎉")
