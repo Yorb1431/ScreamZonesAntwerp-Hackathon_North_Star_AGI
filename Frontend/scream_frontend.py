@@ -9,6 +9,7 @@ import ast
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import random
+st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 
 # 🔑 VUL HIER JOUW GOOGLE API KEY IN
 api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
