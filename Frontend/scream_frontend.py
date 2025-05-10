@@ -20,6 +20,7 @@ api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 
 # ====== Functies ======
 
+
 def safe_parse(tag):
     if isinstance(tag, dict):
         return tag
@@ -29,6 +30,7 @@ def safe_parse(tag):
         except:
             return {}
     return {}
+
 
 def classify_tags(tags):
     if not tags or tags == {}:
@@ -47,6 +49,7 @@ def classify_tags(tags):
         return "✅ Rustige plek"
     return "⚠️ Onzeker"
 
+
 def kleur(label):
     if "✅" in label:
         return "green"
@@ -55,10 +58,14 @@ def kleur(label):
     else:
         return "orange"
 
+
 def generate_random_name():
-    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan", "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
-    achternamen = ["Van Dijk", "Janssens", "Peeters", "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
+    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan",
+                 "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
+    achternamen = ["Van Dijk", "Janssens", "Peeters",
+                   "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
     return f"{random.choice(voornamen)} {random.choice(achternamen)}"
+
 
 @st.cache_data
 def load_and_classify():
@@ -68,6 +75,7 @@ def load_and_classify():
     df['tags_parsed'] = df['tags'].apply(safe_parse)
     df['label'] = df['tags_parsed'].apply(classify_tags)
     return df[df['label'].str.startswith("✅")].copy()
+
 
 # ✅ LOCATIE ÉÉN KEER OPHALEN (alleen handmatig ophalen bij knopdruk)
 if 'user_loc' not in st.session_state:
@@ -86,32 +94,29 @@ if not st.session_state.user_loc:
     st.stop()
 
 user_loc = st.session_state.user_loc
-st.success(f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
+st.success(
+    f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
 
+# Keuzemenu vóór de kaart laadt
+keuze = st.radio("Waar heb je NU nood aan?", [
+    "🔎 Toon ALLE scream zones in Antwerpen",
+    "📍 Toon ENKEL zones binnen 500 meter"
+])
+
+# Dataset laden
 df = load_and_classify()
-df['afstand_m'] = df.apply(lambda row: geodesic(user_loc, (row['lat'], row['lon'])).meters, axis=1)
+df['afstand_m'] = df.apply(lambda row: geodesic(
+    user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
-# 🔘 Filters
-st.subheader("🔍 Filteropties")
-if 'filter_active' not in st.session_state:
-    st.session_state.filter_active = False
-
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🧭 Waar kan ik NU schreeuwen?"):
-        st.session_state.filter_active = True
-with col2:
-    if st.button("🔄 Toon alle scream zones"):
-        st.session_state.filter_active = False
-
-if st.session_state.filter_active:
+if keuze == "📍 Toon ENKEL zones binnen 500 meter":
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
     st.subheader("📍 Scream zones binnen 500 meter")
     if filtered_df.empty:
-        st.warning("😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
+        st.warning(
+            "😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
 else:
-    filtered_df = df.sort_values('afstand_m').head(5)
-    st.subheader("📍 Dichtstbijzijnde scream zones")
+    filtered_df = df.sort_values('afstand_m')
+    st.subheader("📍 Alle scream zones in Antwerpen")
 
 # 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
@@ -132,7 +137,8 @@ for _ in range(20):
     folium.Marker(
         location=[rand_lat, rand_lon],
         popup=f"👤 {random_name}!!!",
-        icon=folium.DivIcon(html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
+        icon=folium.DivIcon(
+            html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
 
 # 📸 Scream zones met foto’s
@@ -183,8 +189,10 @@ with st.form("scream_form"):
     naam = st.text_input("Jouw naam (optioneel)", "")
     lat_input = st.number_input("Breedtegraad (lat)", format="%.6f")
     lon_input = st.number_input("Lengtegraad (lon)", format="%.6f")
-    zone_type = st.selectbox("Type zone", ["Rustig", "Natuurgebied", "Industrie", "Anders"])
-    opmerking = st.text_area("Waarom is dit een goeie plek om te schreeuwen?", "")
+    zone_type = st.selectbox(
+        "Type zone", ["Rustig", "Natuurgebied", "Industrie", "Anders"])
+    opmerking = st.text_area(
+        "Waarom is dit een goeie plek om te schreeuwen?", "")
     verzenden = st.form_submit_button("✅ Verstuur")
 
     if verzenden:
@@ -198,12 +206,12 @@ with st.form("scream_form"):
 
         try:
             bestandsnaam = "suggested_zones.csv"
-            nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(bestandsnaam), index=False)
+            nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(
+                bestandsnaam), index=False)
             st.success("Bedankt voor je suggestie! 🎉")
         except Exception as e:
             st.error(f"Er ging iets mis bij het opslaan: {e}")
 
 if pd.io.common.file_exists("suggested_zones.csv"):
-    st.markdown("### 📄 Ingestuurde scream zones")
     suggesties = pd.read_csv("suggested_zones.csv")
     st.dataframe(suggesties)
