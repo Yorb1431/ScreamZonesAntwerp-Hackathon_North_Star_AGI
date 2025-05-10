@@ -124,7 +124,7 @@ folium.Marker(
 ).add_to(m)
 
 # 👥 Andere willekeurige screamers verspreid over Antwerpen
-other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
+other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿", "🐐", "🤦‍♀️"]
 for _ in range(20):
     rand_lat = random.uniform(51.1800, 51.2600)  # Antwerpen area
     rand_lon = random.uniform(4.3500, 4.4800)
