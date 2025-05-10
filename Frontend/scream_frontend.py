@@ -9,6 +9,7 @@ from streamlit_js_eval import get_geolocation
 
 # ====== Functies ======
 
+
 def safe_parse(tag):
     if isinstance(tag, dict):
         return tag
@@ -18,6 +19,7 @@ def safe_parse(tag):
         except:
             return {}
     return {}
+
 
 def classify_tags(tags):
     if not tags or tags == {}:
@@ -36,6 +38,7 @@ def classify_tags(tags):
         return "✅ Rustige plek"
     return "⚠️ Onzeker"
 
+
 def kleur(label):
     if "✅" in label:
         return "green"
@@ -43,6 +46,7 @@ def kleur(label):
         return "red"
     else:
         return "orange"
+
 
 @st.cache_data
 def load_and_classify():
@@ -54,6 +58,7 @@ def load_and_classify():
     return df[df['label'].str.startswith("✅")].copy()
 
 # ====== App Start ======
+
 
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
@@ -75,13 +80,15 @@ st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
 df = load_and_classify()
 
 # 3. Bereken afstand tot gebruiker
-df['afstand_m'] = df.apply(lambda row: geodesic(user_loc, (row['lat'], row['lon'])).meters, axis=1)
+df['afstand_m'] = df.apply(lambda row: geodesic(
+    user_loc, (row['lat'], row['lon'])).meters, axis=1)
 closest = df.sort_values('afstand_m').head(5)
 
 # 4. Toon kaart
 st.subheader("🔎 Dichtstbijzijnde scream zones")
 m = folium.Map(location=user_loc, zoom_start=14)
-folium.Marker(location=user_loc, popup="📍 Jouw locatie", icon=folium.Icon(color="blue")).add_to(m)
+folium.Marker(location=user_loc, popup="📍 Jouw locatie",
+              icon=folium.Icon(color="blue")).add_to(m)
 
 for _, row in closest.iterrows():
     folium.Marker(
@@ -94,3 +101,43 @@ st_folium(m, width=700, height=500)
 
 
 # 5
+function findNearbyScreamZone() {
+    if (!navigator.geolocation) {
+        alert("Geolocatie wordt niet ondersteund door je browser.")
+        return
+    }
+
+    navigator.geolocation.getCurrentPosition(position=> {
+        const userLat= position.coords.latitude
+        const userLon = position.coords.longitude
+        const screamZones= [
+            {lat: 51.2223, lon: 4.4609, name: 'Rivierenhof Park'},
+            {lat: 51.2139, lon: 4.4162, name: 'Stadspark Tunnel'},
+            {lat: 51.2289, lon: 4.4047, name: 'MAS Dockside'},
+            {lat: 51.2095, lon: 4.3921, name: 'Spoor Noord'}
+        ]
+
+        let closest = null
+        let minDistance = Infinity
+
+        screamZones.forEach(zone= > {
+            const distance = Math.sqrt(Math.pow(userLat - zone.lat, 2) + Math.pow(userLon - zone.lon, 2))
+            if (distance < minDistance) {
+                minDistance= distance
+                closest= zone
+            }
+        })
+
+        L.marker([userLat, userLon]).addTo(
+            map).bindPopup("📍 Jij bent hier").openPopup()
+
+        if (closest) {
+            map.setView([closest.lat, closest.lon], 15)
+            L.marker([closest.lat, closest.lon]).addTo(map)
+            .bindPopup(`🗣️ Dichtstbijzijnde scream zone: < br > <strong >${closest.name} < /strong >`)
+            .openPopup()
+        }
+    }, ()= > {
+        alert("Locatie niet beschikbaar.")
+    })
+}

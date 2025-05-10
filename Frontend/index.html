@@ -1,52 +1,83 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scream Zones Antwerp</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scream Zones Antwerp</title>
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              scream: "#ff0055",
-              forest: "#228B22",
-              tunnel: "#4B5563",
-              water: "#2563EB",
-              danger: "#dc2626",
-            },
-          },
-        },
-      };
-    </script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            scream: "#ef4444",
+            bgdark: "#1f2937"
+          }
+        }
+      }
+    }
+  </script>
 
-    <!-- Leaflet CSS -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
-      integrity="sha256-sA+e2PKVZHo+iAT9s8nXk3XkP1HBjFN0zFvP1lL5l54="
-      crossorigin=""
-    />
-  </head>
-  <body class="bg-gray-900 text-white font-sans min-h-screen">
-    <div class="flex flex-col items-center p-6 space-y-4">
-      <h1 class="text-3xl font-bold text-scream">Scream Zones: Antwerp Edition</h1>
-      <p class="text-lg text-gray-300 text-center max-w-xl">
-        Do you need to scream it out because of exams, homework, work, or whatever, but didn’t know where? We mapped out Antwerp's best scream spots based on peace, echo, and no police. This is a fun project to help you find the best places to scream in Antwerp.
-      </p>
-      <div id="map" class="w-full h-[70vh] rounded-lg shadow-lg border border-gray-700"></div>
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    integrity="sha256-sA+e2PKVZHo+iAT9s8nXk3XkP1HBjFN0zFvP1lL5l54="
+    crossorigin=""
+  />
+  <style>
+    #map {
+      height: 70vh;
+    }
+  </style>
+</head>
+<body class="bg-bgdark text-white font-sans min-h-screen flex flex-col">
+  <header class="p-4 text-center bg-scream text-white text-2xl font-bold">
+    Scream Zones Antwerp
+  </header>
+
+  <main class="flex-grow p-4 flex flex-col gap-4">
+    <div class="flex items-center gap-2">
+      <input id="locationInput" type="text" placeholder="Enter your location..." class="w-full p-2 rounded text-black" />
+      <button onclick="geocodeLocation()" class="bg-scream px-4 py-2 rounded text-white">Find</button>
     </div>
+    <div id="map" class="w-full rounded shadow"></div>
+  </main>
 
-    <!-- Leaflet JS -->
-    <script
-      src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
-      integrity="sha256-o9N1jLkG+nnmIpKp4Ra5F1QFv1Z06A4/x0zZNv7YChQ="
-      crossorigin=""
-    ></script>
-    <script src="script.js"></script>
-  </body>
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+    integrity="sha256-o9N1jLkG+nnmIpKp4Ra5F1QFv1Z06A4/x0zZNv7YChQ="
+    crossorigin=""
+  ></script>
+
+  <!-- Map Logic -->
+  <script>
+    const map = L.map('map').setView([51.2194, 4.4025], 13); // Antwerp default
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    function geocodeLocation() {
+      const query = document.getElementById('locationInput').value;
+      if (!query) return;
+
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            const { lat, lon } = data[0];
+            map.setView([lat, lon], 15);
+            L.marker([lat, lon]).addTo(map).bindPopup("You're here!").openPopup();
+          } else {
+            alert("Location not found");
+          }
+        });
+    }
+  </script>
+</body>
 </html>
