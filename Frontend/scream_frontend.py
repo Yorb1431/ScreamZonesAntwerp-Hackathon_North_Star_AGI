@@ -238,6 +238,6 @@ folium.LayerControl().add_to(m)
 
 # ---------- RENDER ------------------------------------------------------------
 st.subheader("🗺️ Kaart")
-st_folium(m, height=1500, width=1200)
+st_folium(m, height=600, width=820)
 
 st.caption("Data : OpenStreetMap × Hugging Face — Tool by Yorbe & Angelo 🚀")
