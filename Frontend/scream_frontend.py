@@ -15,7 +15,6 @@ api_key = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 
 # ====== Functies ======
 
-
 def safe_parse(tag):
     if isinstance(tag, dict):
         return tag
@@ -25,7 +24,6 @@ def safe_parse(tag):
         except:
             return {}
     return {}
-
 
 def classify_tags(tags):
     if not tags or tags == {}:
@@ -44,7 +42,6 @@ def classify_tags(tags):
         return "✅ Rustige plek"
     return "⚠️ Onzeker"
 
-
 def kleur(label):
     if "✅" in label:
         return "green"
@@ -53,14 +50,10 @@ def kleur(label):
     else:
         return "orange"
 
-
 def generate_random_name():
-    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan",
-                 "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
-    achternamen = ["Van Dijk", "Janssens", "Peeters",
-                   "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
+    voornamen = ["Alex", "Sam", "Charlie", "Robin", "Morgan", "Jamie", "Taylor", "Casey", "Jesse", "Riley"]
+    achternamen = ["Van Dijk", "Janssens", "Peeters", "De Smet", "Vermeulen", "Claes", "Maes", "Willems"]
     return f"{random.choice(voornamen)} {random.choice(achternamen)}"
-
 
 @st.cache_data
 def load_and_classify():
@@ -72,7 +65,6 @@ def load_and_classify():
     return df[df['label'].str.startswith("✅")].copy()
 
 # ====== App Start ======
-
 
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
@@ -88,8 +80,7 @@ user_loc = (lat, lon)
 st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
 
 df = load_and_classify()
-df['afstand_m'] = df.apply(lambda row: geodesic(
-    user_loc, (row['lat'], row['lon'])).meters, axis=1)
+df['afstand_m'] = df.apply(lambda row: geodesic(user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
 # 🔘 Filters
 st.subheader("🔍 Filteropties")
@@ -108,8 +99,7 @@ if st.session_state.filter_active:
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
     st.subheader("📍 Scream zones binnen 500 meter")
     if filtered_df.empty:
-        st.warning(
-            "😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
+        st.warning("😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
 else:
     filtered_df = df.sort_values('afstand_m').head(5)
     st.subheader("📍 Dichtstbijzijnde scream zones")
@@ -124,8 +114,8 @@ folium.Marker(
     icon=folium.DivIcon(html=f"""<div style='font-size:36px;'>🧘</div>""")
 ).add_to(m)
 
-# 👥 Andere willekeurige screamers verspreid over Antwerpen
-other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿", "🤦‍♀️", "🐐", "😑"]
+# 👥 Willekeurige screamers
+other_emojis = ["😎", "👽", "🐸", "🧛", "😱", "🤖", "🧌", "🐡", "👿"]
 for _ in range(20):
     rand_lat = random.uniform(51.1800, 51.2600)
     rand_lon = random.uniform(4.3500, 4.4800)
@@ -133,8 +123,7 @@ for _ in range(20):
     folium.Marker(
         location=[rand_lat, rand_lon],
         popup=f"👤 {random_name}!!!",
-        icon=folium.DivIcon(
-            html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
+        icon=folium.DivIcon(html=f"""<div style='font-size:24px;'>{random.choice(other_emojis)}</div>""")
     ).add_to(m)
 
 # 📸 Scream zones met foto’s
@@ -177,3 +166,35 @@ st.subheader("🗺️ Kaartweergave")
 st_folium(m, width=700, height=500)
 
 st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
+
+st.subheader("📬 Stel een nieuwe scream zone voor")
+
+with st.form("scream_form"):
+    naam = st.text_input("Jouw naam (optioneel)", "")
+    lat_input = st.number_input("Breedtegraad (lat)", format="%.6f")
+    lon_input = st.number_input("Lengtegraad (lon)", format="%.6f")
+    zone_type = st.selectbox("Type zone", ["Rustig", "Natuurgebied", "Industrie", "Anders"])
+    opmerking = st.text_area("Waarom is dit een goeie plek om te schreeuwen?", "")
+    verzenden = st.form_submit_button("✅ Verstuur")
+
+    if verzenden:
+        nieuw = pd.DataFrame([{
+            "naam": naam or "🕵️ Anoniem",
+            "lat": lat_input,
+            "lon": lon_input,
+            "type": zone_type,
+            "opmerking": opmerking
+        }])
+
+        try:
+            # Voeg toe aan CSV (of maak aan)
+            bestandsnaam = "suggested_zones.csv"
+            nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(bestandsnaam), index=False)
+            st.success("Bedankt voor je suggestie! 🎉")
+        except Exception as e:
+            st.error(f"Er ging iets mis bij het opslaan: {e}")
+
+if pd.io.common.file_exists("suggested_zones.csv"):
+    st.markdown("### 📄 Ingestuurde scream zones")
+    suggesties = pd.read_csv("suggested_zones.csv")
+    st.dataframe(suggesties)
