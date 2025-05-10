@@ -9,7 +9,10 @@ import ast
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import random
+
+# ✅ MOET HIER KOMEN
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
+
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
 # 🔑 VUL HIER JOUW GOOGLE API KEY IN
@@ -66,14 +69,6 @@ def load_and_classify():
     df['label'] = df['tags_parsed'].apply(classify_tags)
     return df[df['label'].str.startswith("✅")].copy()
 
-# ====== App Start ======
-
-st.set_page_config(page_title="Scream Zone Finder", layout="wide")
-st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
-
-st.set_page_config(page_title="Scream Zone Finder", layout="wide")
-st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
-
 # ✅ LOCATIE ÉÉN KEER OPHALEN
 if 'user_loc' not in st.session_state:
     location = get_geolocation()
@@ -87,17 +82,6 @@ if 'user_loc' not in st.session_state:
 
 user_loc = st.session_state.user_loc
 st.success(f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
-
-
-location = get_geolocation()
-if location is None:
-    st.warning("📍 Je locatie wordt opgehaald... Sta het toe in je browser.")
-    st.stop()
-
-lat = location['coords']['latitude']
-lon = location['coords']['longitude']
-user_loc = (lat, lon)
-st.success(f"✅ Je locatie is: {round(lat, 5)}, {round(lon, 5)}")
 
 df = load_and_classify()
 df['afstand_m'] = df.apply(lambda row: geodesic(user_loc, (row['lat'], row['lon'])).meters, axis=1)
@@ -187,6 +171,7 @@ st_folium(m, width=700, height=500)
 
 st.caption("Data: OpenStreetMap x Hugging Face | Tool by Yorbe & Angelo 🚀")
 
+# 📬 Suggestieformulier
 st.subheader("📬 Stel een nieuwe scream zone voor")
 
 with st.form("scream_form"):
@@ -207,10 +192,13 @@ with st.form("scream_form"):
         }])
 
         try:
-            # Voeg toe aan CSV (of maak aan)
             bestandsnaam = "suggested_zones.csv"
             nieuw.to_csv(bestandsnaam, mode='a', header=not pd.io.common.file_exists(bestandsnaam), index=False)
             st.success("Bedankt voor je suggestie! 🎉")
         except Exception as e:
             st.error(f"Er ging iets mis bij het opslaan: {e}")
 
+if pd.io.common.file_exists("suggested_zones.csv"):
+    st.markdown("### 📄 Ingestuurde scream zones")
+    suggesties = pd.read_csv("suggested_zones.csv")
+    st.dataframe(suggesties)
