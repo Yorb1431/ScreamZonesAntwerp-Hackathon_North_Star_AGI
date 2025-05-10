@@ -20,7 +20,7 @@ APP_TITLE = "📣 Scream-Zone Finder – Antwerpen"
 ANTWERP_CENTER = (51.2194, 4.4025)
 BOUNDS = dict(lat_min=51.1500, lat_max=51.3000, lon_min=4.2500, lon_max=4.5200)
 
-GOOGLE_KEY = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lAY"
+GOOGLE_KEY = "AIzaSyCj_pYWMhBRpzZRxtYGziDIr4zYv32_9lA"
 DATASET_ID = "ns2agi/antwerp-osm-navigator"
 
 ZONE_SPECS = {
