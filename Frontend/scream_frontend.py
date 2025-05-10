@@ -46,7 +46,7 @@ def kleur(label):
 
 @st.cache_data
 def load_and_classify():
-    dataset = load_dataset("./antwerp-osm-navigator")
+    dataset = load_dataset("ns2agi/antwerp-osm-navigator")
     df = dataset['train'].to_pandas()
     df = df[['lat', 'lon', 'tags']].dropna()
     df['tags_parsed'] = df['tags'].apply(safe_parse)
@@ -91,3 +91,6 @@ for _, row in closest.iterrows():
     ).add_to(m)
 
 st_folium(m, width=700, height=500)
+
+
+# 5
