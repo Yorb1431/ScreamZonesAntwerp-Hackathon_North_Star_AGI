@@ -97,32 +97,26 @@ user_loc = st.session_state.user_loc
 st.success(
     f"✅ Je locatie is: {round(user_loc[0], 5)}, {round(user_loc[1], 5)}")
 
+# Keuzemenu vóór de kaart laadt
+keuze = st.radio("Waar heb je NU nood aan?", [
+    "🔎 Toon ALLE scream zones in Antwerpen",
+    "📍 Toon ENKEL zones binnen 500 meter"
+])
+
+# Dataset laden
 df = load_and_classify()
 df['afstand_m'] = df.apply(lambda row: geodesic(
     user_loc, (row['lat'], row['lon'])).meters, axis=1)
 
-# 🔘 Filters
-st.subheader("🔍 Filteropties")
-if 'filter_active' not in st.session_state:
-    st.session_state.filter_active = False
-
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🧭 Waar kan ik NU schreeuwen?"):
-        st.session_state.filter_active = True
-with col2:
-    if st.button("🔄 Toon alle scream zones"):
-        st.session_state.filter_active = False
-
-if st.session_state.filter_active:
+if keuze == "📍 Toon ENKEL zones binnen 500 meter":
     filtered_df = df[df['afstand_m'] <= 500].sort_values('afstand_m')
     st.subheader("📍 Scream zones binnen 500 meter")
     if filtered_df.empty:
         st.warning(
             "😢 Geen scream zone binnen 500 meter. Misschien even wandelen?")
 else:
-    filtered_df = df.sort_values('afstand_m').head(5)
-    st.subheader("📍 Dichtstbijzijnde scream zones")
+    filtered_df = df.sort_values('afstand_m')
+    st.subheader("📍 Alle scream zones in Antwerpen")
 
 # 🌍 Kaart genereren
 m = folium.Map(location=user_loc, zoom_start=14)
@@ -219,6 +213,5 @@ with st.form("scream_form"):
             st.error(f"Er ging iets mis bij het opslaan: {e}")
 
 if pd.io.common.file_exists("suggested_zones.csv"):
-    st.markdown("### 📄 Ingestuurde scream zones")
     suggesties = pd.read_csv("suggested_zones.csv")
     st.dataframe(suggesties)
