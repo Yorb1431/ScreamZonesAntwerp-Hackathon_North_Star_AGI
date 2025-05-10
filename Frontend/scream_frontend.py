@@ -69,7 +69,7 @@ def load_and_classify():
 st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
- st.set_page_config(page_title="Scream Zone Finder", layout="wide")
+st.set_page_config(page_title="Scream Zone Finder", layout="wide")
 st.title("📣 Vind de dichtstbijzijnde Scream Zone in Antwerpen")
 
 # ✅ LOCATIE ÉÉN KEER OPHALEN
